@@ -1,0 +1,54 @@
+version: '3.9'
+
+services:
+  back: &back
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 8000:8000
+    env_file:
+      - ./src/.env
+    entrypoint: "sh /opt/applications/larixon/entrypoints/django_server.sh"
+    volumes:
+      - .:/opt/applications/larixon
+    networks:
+      - db_network
+      - redis_network
+
+  worker:
+    <<: *back
+    ports: []
+    entrypoint: "sh /opt/applications/larixon/entrypoints/worker.sh"
+  
+  redis:
+    restart: always
+    image: redis:alpine
+    container_name: redis
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    ports:  
+    - "6379:6379"
+    networks:
+      - redis_network
+
+  db:
+    image: postgres:15-alpine
+    container_name: larixon_db
+    restart: unless-stopped
+    volumes:
+      - ./storage/data:/var/lib/postgresql/data
+    env_file:
+      - ./src/.env
+    networks:
+      - db_network
+
+networks:
+  db_network:
+    driver: bridge
+  redis_network:
+    driver: bridge
